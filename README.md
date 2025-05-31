@@ -1,111 +1,78 @@
-# 苍穹外卖
+# 黑马点评
 
 ## 一.项目介绍
+![img.png](assert/img.png)
+基于黑马点评所做的项目优化，实现基于session的session共享，解决商户缓存的缓存穿透缓存雪崩缓存击穿，基于redission分布式锁lua脚本消息队列实现异步秒杀下单，Redis的GEOHash来完成对于地理坐标的操作，使用Redis的BitMap数据实现签到统计，好友关注基于Set集合的关注取消关注共同关注等等功能，达人探店基于List来完成点赞列表的操作，Feed流推送博客基于SortedSet来完成点赞的排行榜功能，UV统计使用HyperLogLog
+## 二.技术选型
 
-本项目（苍穹外卖）是专门为餐饮企业（餐厅、饭店）定制的一款软件产品，包括 系统管理后台 和 小程序端应用 两部分。其中系统管理后台主要提供给餐饮企业内部员工使用，可以对餐厅的分类、菜品、套餐、订单、员工等进行管理维护，对餐厅的各类数据进行统计，同时也可进行来单语音播报功能。小程序端主要提供给消费者使用，可以在线浏览菜品、添加购物车、下单、支付、催单等。
+Spring Boot 2.x Spring MVC 数据存储层：
 
-## 二.功能架构图
+MySQL：存储数据 MyBatis Plus：数据访问框架 Redis 相关：
 
+spring-data-redis：操作 Redis Lettuce：操作 Redis 的高级客户端 Apache Commons Pool：用于实现 Redis 连接池 Redisson：基于 Redis 的分布式数据网格 工具库：
 
+HuTool：工具库合集 Lombok：注解式代码生成工具
 
-![aritecture.png](assert/aritecture.png)
+## 三.功能模块
 
-### (1).管理端功能
+### （1）。短信登录
+这一块我们会使用redis共享session来实现
 
-员工登录/退出 , 员工信息管理 , 分类管理 , 菜品管理 , 套餐管理 , 菜品口味管理 , 订单管理 ，数据统计，来单提醒。
+### （2）。商户查询缓存
+通过本章节，我们会理解缓存击穿，缓存穿透，缓存雪崩等问题，让小伙伴的对于这些概念的理解不仅仅是停留在概念上，更是能在代码中看到对应的内容
 
-### (2).用户端功能
+### （3）。优惠卷秒杀
+通过本章节，我们可以学会Redis的计数器功能， 结合Lua完成高性能的redis操作，同时学会Redis分布式锁的原理，包括Redis的三种消息队列
 
-微信登录 , 收件人地址管理 , 用户历史订单查询 , 菜品规格查询 , 购物车功能 , 下单 , 支付、分类及菜品浏览。
+### （4）。附近的商户
+我们利用Redis的GEOHash来完成对于地理坐标的操作
 
-## 三.技术选型
+### （5）。UV统计
+主要是使用Redis来完成统计功能
 
-![technology.png](assert/technology.png)
+### （6）。用户签到
+使用Redis的BitMap数据统计功能
 
-### (1). 用户层
+### （7）。好友关注
+基于Set集合的关注、取消关注，共同关注等等功能，这一块知识咱们之前就讲过，这次我们在项目中来使用一下
 
-本项目中在构建系统管理后台的前端页面，我们会用到H5、Vue.js、ElementUI、apache echarts(展示图表)等技术。而在构建移动端应用时，我们会使用到微信小程序。
-
-### (2). 网关层
-
-Nginx是一个服务器，主要用来作为Http服务器，部署静态资源，访问性能高。在Nginx中还有两个比较重要的作用： 反向代理和负载均衡， 在进行项目部署时，要实现Tomcat的负载均衡，就可以通过Nginx来实现。
-
-### (3). 应用层
-
-SpringBoot： 快速构建Spring项目, 采用 "约定优于配置" 的思想, 简化Spring项目的配置开发。 SpringMVC：SpringMVC是spring框架的一个模块，springmvc和spring无需通过中间整合层进行整合，可以无缝集成。 Spring Task: 由Spring提供的定时任务框架。 httpclient: 主要实现了对http请求的发送。 Spring Cache: 由Spring提供的数据缓存框架 JWT: 用于对应用程序上的用户进行身份验证的标记。 阿里云OSS: 对象存储服务，在项目中主要存储文件，如图片等。 Swagger： 可以自动的帮助开发人员生成接口文档，并对接口进行测试。 POI: 封装了对Excel表格的常用操作。 WebSocket: 一种通信网络协议，使客户端和服务器之间的数据交换更加简单，用于项目的来单、催单功能实现。
-
-### (4). 数据层
-
-MySQL： 关系型数据库, 本项目的核心业务数据都会采用MySQL进行存储。 Redis： 基于key-value格式存储的内存数据库, 访问速度快, 经常使用它做缓存。 Mybatis： 本项目持久层将会使用Mybatis开发。 pagehelper: 分页插件。 spring data redis: 简化java代码操作Redis的API。
-
-### (5). 工具
-
-git: 版本控制工具, 在团队协作中, 使用该工具对项目中的代码进行管理。 maven: 项目构建工具。 junit：单元测试工具，开发人员功能实现完毕后，需要通过junit对功能进行单元测试。 postman: 接口测工具，模拟用户发起的各类HTTP请求，获取对应的响应结果。
+### （8）。打人探店
+基于List来完成点赞列表的操作，同时基于SortedSet来完成点赞的排行榜功能
 
 
-## 四.技术栈
-
-- 后端框架
-    - SpringBoot
-    - SpringMVC
-    - Spring Task
-    - httpclient
-    - Spring Cache
-    - mybatis
-    - Swagger
-    - Websocket
-    - aliyun oss
-    - JWT
-    - POI
-    - wechatpay(模拟)
-- 数据库
-    - MySql
-    - Redis
-- 前端框架
-    - Vue
-    - ElementUI
-    - Vue-Router
-    - Axios
-    - ECharts
-    - 微信小程序
-
-## 五.配置文件修改
+## 四.配置文件修改
 
  ```yml
-    sky:
-       datasource:
-         driver-class-name: com.mysql.cj.jdbc.Driver
-         host: localhost
-         port: 3306
-         database: sky_take_out
-         username: 本机账号
-         password: 本机密码
-    aliyun:   #阿里云配置,用于文件上传
-        access-key-id: xxxxxxxxxxxxxxxxxxxx  #阿里云accessKey
-        access-key-secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxx #阿里云secretKey
-        endpoint: oss-cn-beijing.aliyuncs.com  #阿里云endpoint
-        bucket-name: xxxxxxxx  #阿里云bucketName
-    redis:
-        host: 192.168.100.128  #redis地址
-        port: 6379  #redis端口
-        password: xxxxxx  #redis密码
-        database: 0
-    wx:   #微信配置
-       app-id: wxffb3637a228223b8 #微信公众号appid
-       app-secret: 84311df9199ecacdf4f12d27b6b9522d  #微信公众号appsecret
-       mchid: 1561414331  #微信商户号mchid
-       mchSerialNo: 4B3B3DC35414AD50B1B755BAF8DE9CC7CF407606  #微信商户号密钥
-       privateKeyFilePath:  D:\pay\apiclient_key.pem      #微信商户号私钥文件路径
-       apiV3Key: CZBK51236435wxpay435434323FFDuv3         #微信商户号v3密钥
-       weChatPayCertFilePath: D:\pay\wechatpay_166D96F876F45C7D07CE98952A96EC980368ACFC.pem   #微信商户号证书文件路径
-       notifyUrl: http://xxxxxxxxx/notify/paySuccess  #微信支付成功回调地址(xxxx部分需要替换成使用本项目启动的cpolar软件中的域名)
-       refundNotifyUrl: https://xxxxxxxxx/notify/refundSuccess  #微信退款成功回调地址(xxxx部分需要替换成使用本项目启动的cpolar软件中的域名)
-    shop:
-      address: 北京市朝阳区北苑东路11号院
-    baidu:
-      ak: xxxxxxxxxxxxxxxxxxx #百度地图ak(需要自己去百度地图开发平台申请应用获取ak)
+    server:
+    port: 8081
+    spring:
+      application:
+        name: hmdp
+      datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        #    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC
+        username: root
+        password: 123456
+        url: jdbc:mysql://localhost:3306/hmdp?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      redis:
+        host: 192.168.8.130
+        port: 6379
+        password: yangroot
+        lettuce:
+          pool:
+            max-active: 10
+            max-idle: 10
+            min-idle: 1
+            time-between-eviction-runs: 10s
+      jackson:
+        default-property-inclusion: non_null # JSON处理时忽略非空字段
+    mybatis-plus:
+      type-aliases-package: com.hmdp.entity # 别名扫描包
+    logging:
+      level:
+        com.hmdp: debug
+      pattern:
+        dateformat: mm:ss.SSS
    ```
 ## 六.项目演示
-
-- 用户端
 
