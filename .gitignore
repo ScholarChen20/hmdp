@@ -18,7 +18,7 @@ target/
 *.iws
 *.iml
 *.ipr
-
+!**/src/main/resources/nginx-1.18.0/html/**
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
