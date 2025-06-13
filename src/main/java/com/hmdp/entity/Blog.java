@@ -53,7 +53,7 @@ public class Blog implements Serializable {
     /**
      * 是否点赞过了
      */
-    @TableField(exist = false)
+    @TableField(exist = false)  //  表示该字段不存在数据库中
     private Boolean isLike;
 
     /**

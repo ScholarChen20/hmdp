@@ -24,6 +24,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static com.hmdp.utils.RedisConstants.LOGIN_CODE_KEY;
+import static com.hmdp.utils.RedisConstants.LOGIN_CODE_TTL;
+
 /**
  * <p>
  * 服务实现类
@@ -50,9 +53,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         //2.生成验证码
         String code = RandomUtil.randomNumbers(6);
+        //3.保存验证码到session
 //        session.setAttribute("code",code);
         //4.保存验证码到redis
-        stringRedisTemplate.opsForValue().set(RedisConstants.LOGIN_CODE_KEY + phone, code, RedisConstants.LOGIN_CODE_TTL, TimeUnit.MINUTES);//2分钟过期
+        stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);//2分钟过期
 
         log.debug("验证码为："+code);
         //5.返回结果
@@ -67,17 +71,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
      */
     @Override
     public Result login(LoginFormDTO loginForm, HttpSession session) {
+        String phone = loginForm.getPhone();
         //1.校验手机号
-        if(RegexUtils.isPhoneInvalid( loginForm.getPhone())){
+        if(RegexUtils.isPhoneInvalid( phone)){
             return Result.fail("手机号格式不正确");
         }
         //2.从redis中获取验证码
-        String code = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + loginForm.getPhone());
-        if(code == null){
-            return Result.fail("验证码已过期");
+        String cacheCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
+        String code = loginForm.getCode();
+
+        if(cacheCode == null ||!code.equals(cacheCode)){
+            return Result.fail("验证码错误");
         }
+//        if(code == null){
+//            return Result.fail("验证码已过期");
+//        }
         //3.根据手机号查询用户，不存在则创建用户
-        User user = query().eq("phone", loginForm.getPhone()).one();
+        User user = query().eq("phone", phone).one();
         if(user == null){
             user = createUserWithPhone(loginForm.getPhone());
         }
@@ -96,7 +106,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //4.4 设置token过期时间
         stringRedisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);//10分钟过期
         //5.返回结果
-        return Result.ok();
+        return Result.ok(token);
     }
 
     /**

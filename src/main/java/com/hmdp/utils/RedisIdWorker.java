@@ -20,10 +20,9 @@ public class RedisIdWorker {
         this.stringRedisTemplate = stringRedisTemplate;
     }
     public long nexId(String keyPrefix) {
-        // TODO: implement RedisIdWorker
         //1. 生成时间戳
-        LocalDateTime now =LocalDateTime.now();
-        long nowSeconds = now.toEpochSecond(ZoneOffset.UTC);
+        LocalDateTime now =LocalDateTime.now();  //   获取当前时间
+        long nowSeconds = now.toEpochSecond(ZoneOffset.UTC);  //  获取秒级时间戳
         long timestamp = nowSeconds - BEGIN_TIMESTAMP;
 
         //2. 生成序列号
