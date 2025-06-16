@@ -67,7 +67,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return Result.fail("店铺不存在！");
         }
         //4. 返回查询结果
-        return Result.ok();
+        return Result.ok(shop);
     }
 
     private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
@@ -233,18 +233,18 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         int end = current * SystemConstants.DEFAULT_PAGE_SIZE; // 结束位置
         //3. 查询redis，按照距离排序、分页
         String key = RedisConstants.SHOP_GEO_KEY + typeId;
-        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // 1. 根据geohash查询 GEOSEARCH key from  byradius x y WITHDISTANCE
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // 1. 根据geohash查询 GEOSEARCH  byradius x y BYRADIUS 10 WITHDISTANCE
                 .search(
                         key,
                         GeoReference.fromCoordinate(x, y),
                         new Distance(5000),
-                        RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeCoordinates().limit(end)
+                        RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
                 );// 2. 获取距离排序结果
         //4. 解析出id
         if (results == null) {
             return Result.ok(Collections.emptyList());
         }
-        List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent();
+        List<GeoResult<RedisGeoCommands.GeoLocation<String>>> list = results.getContent(); // 5. 获取所有店铺id
         // 如果list的大小小于from，则返回空列表
         if(list.size() <= from){
             return Result.ok(Collections.emptyList());

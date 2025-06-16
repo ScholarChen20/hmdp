@@ -71,7 +71,7 @@ public class ShopController {
             @RequestParam("typeId") Integer typeId,
             @RequestParam(value = "current", defaultValue = "1") Integer current,
             @RequestParam(value = "x",required = false) Double x,
-             @RequestParam(value = "y",required = false) Double y
+            @RequestParam(value = "y",required = false) Double y
     ) {
         return shopService.queryShopByType(typeId,current,x,y);
     }
