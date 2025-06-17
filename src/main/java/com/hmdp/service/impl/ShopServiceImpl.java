@@ -70,8 +70,15 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return Result.ok(shop);
     }
 
-    private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
+    private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10); // 线程池缓存重建
 
+    /**
+     * 缓存穿透，产生原因热点key在某一时段被高并发访问，缓存重建耗时较长。热点key突然过期，时间段内大量请求访问数据库，带来巨大冲击
+     * 逻辑过期时间，查询到数据时通过对逻辑时间判断来决定是否需要重建缓存，重建缓存通过互斥锁保证单线程执行，利用独立线程异步执行，其他线程无需等待直接查询旧的数据即可
+     * 不保证数据一致性的问题，额外内存的开销
+     * @param id
+     * @return
+     */
     public Shop queryWithLogicalExpire(Long id) {
         String key = RedisConstants.CACHE_SHOP_KEY + id;
         // 1. 从redis中查询店铺缓存
@@ -110,6 +117,13 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 //        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop),RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
         return shop;
     }
+
+    /**
+     * 互斥锁，给缓存重建过程枷锁，确保重建过程只有一个线程执行，其他线程等待
+     * 实现简单，没有额外内存消耗，一致性好，但性能低，还有死锁风险。
+     * @param id
+     * @return
+     */
     public Shop queryWithMutex(Long id){
         String key = RedisConstants.CACHE_SHOP_KEY + id;
         // 1. 从redis中查询店铺缓存
@@ -151,6 +165,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return shop;
         }
     }
+
+    /**
+     * 缓存穿透（客户端请求的数据在缓存中和数据库中都不存在，这样缓存永远不会生效，这些请求都会打到数据库
+     * 解决方案1）：缓存空对象，实现简单，但存在额外内存开销，短期的数据不一致问题
+     * 2）使用布隆过滤器，判断数据是否存在，不存在则返回错误，存在则返回数据，缺点是需要维护布隆过滤器，占用内存，且无法动态调整
+     * @param id
+     * @return
+     */
     public Shop queryWithPassThrough(Long id) {
         String key = RedisConstants.CACHE_SHOP_KEY + id;
         // 1. 从redis中查询店铺缓存
@@ -217,6 +239,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return Result.ok();
     }
 
+    /**
+     * 商铺类型查询
+     * @param typeId
+     * @param current
+     * @param x
+     * @param y
+     * @return
+     */
     @Override
     public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
         //1. 判断是否需要根据坐标查询
