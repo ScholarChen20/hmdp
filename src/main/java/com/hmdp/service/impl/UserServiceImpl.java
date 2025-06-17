@@ -14,12 +14,12 @@ import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -162,6 +162,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             num = num >> 1; //右移一位
         }
         return Result.ok(count);
+    }
+
+    @Override
+    public Result logout(HttpServletRequest request) {
+        //TODO 登出功能
+        //1. 获取当前登录用户
+        UserDTO user = UserHolder.getUser();
+        //2. 清除session
+        UserHolder.removeUser();
+        //3. 清除redis中的token
+        //3.1 根据hashMap的userId获取token
+        String token = request.getHeader("authorization");
+        //3.2 删除redis中的token
+        String tokenKey = RedisConstants.LOGIN_USER_KEY + token;
+        stringRedisTemplate.delete(tokenKey);
+        //4. 返回结果
+        return Result.ok();
     }
 
     /**
