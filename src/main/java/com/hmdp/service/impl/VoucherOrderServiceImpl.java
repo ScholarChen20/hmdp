@@ -56,14 +56,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private RedissonClient  redissonClient;
 
 
-    private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor(); //  创建线程池
+    private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor(); //  创建单个线程池，用于处理订单队列
 
     /**
-     * 线程池初始化
+     * 线程池初始化，启动订单处理线程
      */
-    @PostConstruct
+    @PostConstruct  /// 启动时执行该方法
     private void init(){
-        SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
+        SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler()); // 启动线程后启动线程处理订单队列
     }
 
     /**
@@ -102,7 +102,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
 
         /**
-         * 处理延时队列中的订单
+         * 处理延时队列中的订单，获取pending-list中的订单，处理订单
          */
         private void handlePendingList() {
             while (true){
@@ -138,12 +138,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     /**
-     * 处理订单
+     * 处理订单，使用Redisson分布式锁实现线程安全，可重试
      * @param voucherOrder
      */
     private void handleVoucherOrder(VoucherOrder voucherOrder) {
         Long userId = voucherOrder.getUserId();
-        // 创建锁对象
+        // 创建Redisson分布式锁对象，该锁保证线程安全，可重试
         RLock lock = redissonClient.getLock("lock:order:" + userId);
         // 获取锁
         boolean isLock = lock.tryLock();
@@ -172,7 +172,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private IVoucherOrderService proxy;
 
     /**
-     *
+     * 秒杀优惠券, 使用LUA脚本实现秒杀下单。
+     * 基于lua脚本实现库存预扣与并发校验，保证秒杀下单的原子性。
      * @param voucherId
      * @return
      */
@@ -198,9 +199,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         return Result.ok(orderId);
     }
 
-    private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024); //创建阻塞队列
+    private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024); /// 创建阻塞队列，消耗JVM内存, 存在数据不一致问题
     /**
-     * 基于阻塞队列实现秒杀下单
+     * 基于阻塞队列实现秒杀下单，存在内存限制问题和数据安全问题，存在数据不一致问题。
+     * 引入Redis的Stream实现异步处理，解决数据不一致问题，解决内存限制问题，解决数据安全问题。
      */
     @Override
     public Result seckillVoucherByQueue(Long voucherId) {
@@ -226,13 +228,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         voucherOrder.setVoucherId(voucherId);
         //创建阻塞队列
         orderTasks.add(voucherOrder);
+        //也可使用rabbitmq 实现异步处理
         //3. 获取代理带向
         proxy = (IVoucherOrderService) AopContext.currentProxy();
         return Result.ok(orderId);
     }
 
 //    /**
-//     * 秒杀优惠券基于Redis锁实现
+//     * 秒杀优惠券基于Redis分布式锁锁实现，无法保证线程安全，不可重试
 //     * @param voucherId
 //     * @return
 //     */
