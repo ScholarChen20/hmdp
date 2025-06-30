@@ -34,5 +34,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
      */
     Result seckillVoucherByQueue(Long voucherId);
 
+    void handleVoucherOrderByMq(VoucherOrder voucherOrder);
+
 //    Result seckillVoucherByRedisLock(Long shopId);
 }

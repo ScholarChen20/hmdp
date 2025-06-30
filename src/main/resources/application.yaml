@@ -3,12 +3,12 @@ server:
 spring:
   application:
     name: hmdp
-  datasource:
+  datasource:  # 数据源配置
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/hmdp
     username: root
     password: 123456
-  redis:
+  redis: # Redis配置
     host: 192.168.100.128
     port: 6379
     password: 123321
@@ -20,6 +20,12 @@ spring:
         time-between-eviction-runs: 10s
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
+  rabbitmq:  # RabbitMQ配置
+    host: 192.168.100.128 # RabbitMQ服务地址
+    port: 5672  # RabbitMQ服务端口
+    virtual-host: /hmall # RabbitMQ服务虚拟主机
+    username: hmall # RabbitMQ用户名
+    password: 123 # RabbitMQ密码
 mybatis-plus:
   type-aliases-package: com.hmdp.entity # 别名扫描包
 logging:

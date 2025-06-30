@@ -1,6 +1,7 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.hmdp.config.RabbitMQConfig;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
@@ -10,6 +11,7 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.connection.stream.Consumer;
 
 import lombok.extern.slf4j.Slf4j;
@@ -54,12 +56,15 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RedissonClient  redissonClient;
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
 
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor(); //  创建单个线程池，用于处理订单队列
 
     /**
      * 线程池初始化，启动订单处理线程
+     * todo 使用rabbitmq时需要注释掉
      */
     @PostConstruct  /// 启动时执行该方法
     private void init(){
@@ -67,7 +72,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     /**
-     * 处理订单队列
+     * todo 使用rabbitmq时需要注释掉
+     * 处理订单队列.Redis提供三种不同的方式实现消息队列
+     * 1. List结构：List结构是Redis中最简单的消息队列实现方式，可以实现简单的消息队列功能。
+     * 2. Stream结构：Stream结构是Redis中一种更高级的消息队列实现方式，可以实现更复杂的消息队列功能。
+     * 3. Pub/Sub结构：Pub/Sub结构是Redis中一种发布/订阅模式的消息队列实现方式，可以实现发布/订阅模式的消息队列功能。
      */
     private class VoucherOrderHandler implements Runnable{
         String queueName = "stream.orders";
@@ -81,6 +90,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                             StreamReadOptions.empty().count(1).block(Duration.ofSeconds(2)),
                             StreamOffset.create(queueName, ReadOffset.lastConsumed())
                     );
+
 
                     //2.判断消息获取是否成功
                     if(list == null || list.isEmpty()){
@@ -103,6 +113,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         /**
          * 处理延时队列中的订单，获取pending-list中的订单，处理订单
+         * todo 使用rabbitmq时需要注释掉
          */
         private void handlePendingList() {
             while (true){
@@ -139,9 +150,33 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     /**
      * 处理订单，使用Redisson分布式锁实现线程安全，可重试
+     * todo 使用rabbitmq时需要注释掉
      * @param voucherOrder
      */
     private void handleVoucherOrder(VoucherOrder voucherOrder) {
+        Long userId = voucherOrder.getUserId();
+        // 创建Redisson分布式锁对象，该锁保证线程安全，可重试
+        RLock lock = redissonClient.getLock("lock:order:" + userId);
+        // 获取锁
+        boolean isLock = lock.tryLock();
+        // 判断获取锁是否成功
+        if(!isLock){
+            log.info("不允许重复下单");
+            return;
+        }
+        try {
+            proxy.createVoucherOrder(voucherOrder);
+            //事务提交之后即可释放锁
+        } finally {
+            lock.unlock(); //释放锁
+        }
+    }
+
+    /**
+     * 处理订单，使用Redisson分布式锁实现线程安全, 使用MQ实现消息队列，可重试
+     * @param voucherOrder
+     */
+    public void handleVoucherOrderByMq(VoucherOrder voucherOrder) {
         Long userId = voucherOrder.getUserId();
         // 创建Redisson分布式锁对象，该锁保证线程安全，可重试
         RLock lock = redissonClient.getLock("lock:order:" + userId);
@@ -194,6 +229,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if(r != 0) {
             return Result.fail(r == 1 ? "库存不足" : "不能重复下单");
         }
+        VoucherOrder voucherOrder = new VoucherOrder();
+        voucherOrder.setId(orderId);
+        voucherOrder.setUserId(userId);
+        voucherOrder.setVoucherId(voucherId);
+
+        //发送消息到rabbitmq队列中
+        rabbitTemplate.convertAndSend(RabbitMQConfig.SECKILL_ORDER_QUEUE, voucherOrder);
+
         //2.2 购买资格，把下单信息保存到阻塞队列
         proxy = (IVoucherOrderService) AopContext.currentProxy();
         return Result.ok(orderId);
@@ -202,7 +245,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024); /// 创建阻塞队列，消耗JVM内存, 存在数据不一致问题
     /**
      * 基于阻塞队列实现秒杀下单，存在内存限制问题和数据安全问题，存在数据不一致问题。
-     * 引入Redis的Stream实现异步处理，解决数据不一致问题，解决内存限制问题，解决数据安全问题。
+     * 阻塞队列占用JVM内存，存在数据不一致问题。
      */
     @Override
     public Result seckillVoucherByQueue(Long voucherId) {
