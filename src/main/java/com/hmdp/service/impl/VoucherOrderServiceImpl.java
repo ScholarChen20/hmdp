@@ -112,7 +112,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
 
         /**
-         * 处理延时队列中的订单，获取pending-list中的订单，处理订单
+         * 处理延时队列中的订单，获取pending-list中的订单，处理订单。
+         * Redis Stream需要自己维护延时队列，手动记录失败消息。需要手动实现ACK确认和消费确认 。
          * todo 使用rabbitmq时需要注释掉
          */
         private void handlePendingList() {
@@ -174,6 +175,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     /**
      * 处理订单，使用Redisson分布式锁实现线程安全, 使用MQ实现消息队列，可重试
+     * 秒杀高峰期时，RabbitMQ 可轻松横向扩展多个消费者节点来提升订单处理能力，而 Redis Stream 需要额外开发才能实现类似效果。
+     * RabbitMQ 可通过设置最大重试次数后将失败消息转发到死信队列，便于后续人工干预或补偿处理，减少订单丢失风险。
      * @param voucherOrder
      */
     public void handleVoucherOrderByMq(VoucherOrder voucherOrder) {
