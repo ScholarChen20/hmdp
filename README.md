@@ -1,8 +1,8 @@
-# 黑马点评
+# 美食点评
 
 ## 一.项目介绍
 ![img.png](assert/img.png)
-基于黑马点评所做的项目优化，实现基于session的session共享，解决商户缓存的缓存穿透缓存雪崩缓存击穿，基于redission分布式锁lua脚本消息队列实现异步秒杀下单，Redis的GEOHash来完成对于地理坐标的操作，使用Redis的BitMap数据实现签到统计，好友关注基于Set集合的关注取消关注共同关注等等功能，达人探店基于List来完成点赞列表的操作，Feed流推送博客基于SortedSet来完成点赞的排行榜功能，UV统计使用HyperLogLog
+基于美食点评所做的项目优化，实现基于session的session共享，解决商户缓存的缓存穿透缓存雪崩缓存击穿，基于redission分布式锁lua脚本消息队列实现异步秒杀下单，Redis的GEOHash来完成对于地理坐标的操作，使用Redis的BitMap数据实现签到统计，好友关注基于Set集合的关注取消关注共同关注等等功能，达人探店基于List来完成点赞列表的操作，Feed流推送博客基于SortedSet来完成点赞的排行榜功能，UV统计使用HyperLogLog
 ## 二.技术选型
 
 Spring Boot 2.x Spring MVC 数据存储层：
