@@ -197,7 +197,11 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return shop;
     }
     /**
-     * 枷锁
+     * 枷锁,基于setnx实现
+     * 1. 尝试获取锁，成功则返回true，失败则返回false
+     * 2. 成功获取锁，则执行缓存重建，失败则返回null
+     * 3. 缓存重建完成，则返回数据，失败则返回null
+     * 4. 解锁，释放锁
      * @param key
      * @return
      */
@@ -290,7 +294,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                     Distance distance = result.getDistance();
                     distanceMap.put(shopIdStr, distance);
                 });
-        //5. 根据id查询店铺
+        //5. 根据id查询店铺，order by field（id，id1,id2）表示id的顺序
         String idStr = StrUtil.join(",", ids);
         List<Shop> shops = query().in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list();
         for (Shop shop : shops) {

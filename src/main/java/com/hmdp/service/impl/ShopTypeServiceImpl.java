@@ -35,7 +35,7 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
         List<String> type = stringRedisTemplate.opsForList().range(key, 0, -1); // 返回指定范围的元素，包含头尾
         //2. 如果存在，直接返回
         if (type != null && type.size() > 0) {
-            List<ShopType> shopTypes = type.stream().map(s -> JSONUtil.toBean(s, ShopType.class)).collect(Collectors.toList());
+            List<ShopType> shopTypes = type.stream().map(s -> JSONUtil.toBean(s, ShopType.class)).collect(Collectors.toList()); // 将json转为对象，转为对象列表
             return Result.ok(shopTypes);
         }
         //3. 如果不存在，查询数据库，并缓存到redis

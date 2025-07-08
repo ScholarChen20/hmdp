@@ -322,7 +322,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 //    }
 
     /**
-     * 创建订单
+     * 创建订单，使用乐观锁实现防止超卖，可重试
      * @param voucherOrder
      * @return
      */
