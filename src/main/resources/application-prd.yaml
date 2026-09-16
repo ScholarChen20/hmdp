@@ -1,0 +1,34 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${PRD_DB_URL}
+    username: ${PRD_DB_USERNAME}
+    password: ${PRD_DB_PASSWORD}
+  redis:
+    host: ${PRD_REDIS_HOST}
+    port: ${PRD_REDIS_PORT:6379}
+    password: ${PRD_REDIS_PASSWORD}
+    lettuce:
+      pool:
+        max-active: ${PRD_REDIS_POOL_MAX_ACTIVE:50}
+        max-idle: ${PRD_REDIS_POOL_MAX_IDLE:20}
+        min-idle: ${PRD_REDIS_POOL_MIN_IDLE:5}
+        time-between-eviction-runs: ${PRD_REDIS_EVICTION_INTERVAL:10s}
+  rabbitmq:
+    host: ${PRD_RABBITMQ_HOST}
+    port: ${PRD_RABBITMQ_PORT:5672}
+    virtual-host: ${PRD_RABBITMQ_VIRTUAL_HOST:/hmall}
+    username: ${PRD_RABBITMQ_USERNAME}
+    password: ${PRD_RABBITMQ_PASSWORD}
+
+logging:
+  level:
+    com.hmdp: ${LOG_LEVEL:info}
+
+ai:
+  qwen:
+    enabled: ${QWEN_ENABLED:true}
+    api-key: ${QWEN_API_KEY}
