@@ -31,3 +31,14 @@ mybatis-plus:
 logging:
   level:
     com.hmdp: debug
+ai:
+  qwen:
+    enabled: ${QWEN_ENABLED:false}
+    api-key: ${QWEN_API_KEY:}
+    model-name: ${QWEN_MODEL_NAME:qwen-plus}
+    timeout-seconds: 30
+  chat:
+    memory-max-messages: 40
+    memory-ttl-hours: 24
+  appointment:
+    confirmation-ttl-minutes: 15
