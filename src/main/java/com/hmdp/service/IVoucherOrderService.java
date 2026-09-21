@@ -25,7 +25,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
      * 创建订单
      * @param voucherOrder
      */
-    void createVoucherOrder(VoucherOrder voucherOrder);
+    boolean createVoucherOrder(VoucherOrder voucherOrder);
 
     /**
      * 使用Redis+阻塞队列实现秒杀
@@ -35,6 +35,8 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
     Result seckillVoucherByQueue(Long voucherId);
 
     void handleVoucherOrderByMq(VoucherOrder voucherOrder);
+
+    void releaseReservation(Long orderId, Long userId, Long voucherId);
 
 //    Result seckillVoucherByRedisLock(Long shopId);
 }

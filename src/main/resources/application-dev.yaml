@@ -23,6 +23,19 @@ spring:
     virtual-host: ${DEV_RABBITMQ_VIRTUAL_HOST:/hmall}
     username: ${DEV_RABBITMQ_USERNAME:hmall}
     password: ${DEV_RABBITMQ_PASSWORD:123}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        prefetch: 10
+
+seckill:
+  reservation:
+    timeout-seconds: ${SECKILL_RESERVATION_TIMEOUT_SECONDS:300}
+    compensation-delay-ms: ${SECKILL_RESERVATION_COMPENSATION_DELAY_MS:60000}
 
 logging:
   level:
