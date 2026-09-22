@@ -1,24 +1,22 @@
 package com.hmdp.ai.service;
 
+import com.hmdp.ai.audit.AiAuditEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 public class AiAuditLogger {
-    public void success(Long userId, String conversationId, String message, long elapsedMs) {
-        log.info("ai_audit event=chat status=success userId={} conversationId={} traceId={} messageSummary={} elapsedMs={}",
-                userId, conversationId, TraceContext.currentTraceId(), summarize(message), elapsedMs);
-    }
-
-    public void failure(Long userId, String conversationId, String message, String errorType, long elapsedMs) {
-        log.warn("ai_audit event=chat status=failure userId={} conversationId={} traceId={} messageSummary={} errorType={} elapsedMs={}",
-                userId, conversationId, TraceContext.currentTraceId(), summarize(message), errorType, elapsedMs);
-    }
-
-    public void fallback(Long userId, String conversationId, String message, long elapsedMs) {
-        log.info("ai_audit event=chat status=fallback userId={} conversationId={} traceId={} messageSummary={} elapsedMs={}",
-                userId, conversationId, TraceContext.currentTraceId(), summarize(message), elapsedMs);
+    public void log(AiAuditEvent event) {
+        String template = "ai_audit event={} status={} userId={} conversationId={} traceId={} messageSummary={} answerSummary={} errorType={} elapsedMs={}";
+        Object[] values = {event.getOperation(), event.getStatus(), event.getUserId(), event.getConversationId(),
+                event.getTraceId(), summarize(event.getMessage()), summarize(event.getAnswer()), event.getErrorType(),
+                event.getElapsedMs()};
+        if ("failure".equals(event.getStatus())) {
+            log.warn(template, values);
+        } else {
+            log.info(template, values);
+        }
     }
 
     private String summarize(String message) {

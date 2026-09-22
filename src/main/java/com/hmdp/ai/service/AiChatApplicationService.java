@@ -2,6 +2,7 @@ package com.hmdp.ai.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.hmdp.ai.config.RedisChatMemoryStore;
+import com.hmdp.ai.audit.AiAudit;
 import com.hmdp.ai.dto.AiChatResponse;
 import com.hmdp.ai.exception.AiRequestRejectedException;
 import com.hmdp.utils.UserHolder;
@@ -16,19 +17,17 @@ public class AiChatApplicationService {
     private final AiRateLimiter aiRateLimiter;
     private final com.hmdp.ai.security.AiSafetyGuard aiSafetyGuard;
     private final AiFaqService aiFaqService;
-    private final AiAuditLogger aiAuditLogger;
     private final AiMetrics aiMetrics;
 
     public AiChatApplicationService(AiCustomerService aiCustomerService, RedisChatMemoryStore chatMemoryStore,
                                     AiRateLimiter aiRateLimiter,
                                     com.hmdp.ai.security.AiSafetyGuard aiSafetyGuard,
-                                    AiFaqService aiFaqService, AiAuditLogger aiAuditLogger, AiMetrics aiMetrics) {
+                                    AiFaqService aiFaqService, AiMetrics aiMetrics) {
         this.aiCustomerService = aiCustomerService;
         this.chatMemoryStore = chatMemoryStore;
         this.aiRateLimiter = aiRateLimiter;
         this.aiSafetyGuard = aiSafetyGuard;
         this.aiFaqService = aiFaqService;
-        this.aiAuditLogger = aiAuditLogger;
         this.aiMetrics = aiMetrics;
     }
 
@@ -36,6 +35,7 @@ public class AiChatApplicationService {
         return chat(conversationId, message, "unknown");
     }
 
+    @AiAudit(operation = "chat")
     public AiChatResponse chat(String conversationId, String message, String clientIp) {
         if (UserHolder.getUser() == null) {
             throw new IllegalStateException("????????????");
@@ -50,14 +50,12 @@ public class AiChatApplicationService {
             aiRateLimiter.check(userId, clientIp);
         } catch (AiRequestRejectedException e) {
             aiMetrics.rateLimited();
-            aiAuditLogger.failure(userId, actualConversationId, message, e.getClass().getSimpleName(), elapsedMs(startedAt));
             throw e;
         }
         try {
             aiSafetyGuard.validateInput(message);
         } catch (AiRequestRejectedException e) {
             aiMetrics.safetyRejected();
-            aiAuditLogger.failure(userId, actualConversationId, message, e.getClass().getSimpleName(), elapsedMs(startedAt));
             throw e;
         }
         AiRequestContext.setAppointmentConfirmation(isConfirmationMessage(message));
@@ -72,17 +70,13 @@ public class AiChatApplicationService {
                 fallback = !answer.startsWith("当前智能客服");
                 if (fallback) {
                     aiMetrics.faqFallback();
-                    aiAuditLogger.fallback(userId, actualConversationId, message, elapsedMs(startedAt));
+                    AiRequestContext.markFallback(e.getClass().getSimpleName());
                 }
-                aiAuditLogger.failure(userId, actualConversationId, message, e.getClass().getSimpleName(), elapsedMs(startedAt));
             }
             answer = aiSafetyGuard.sanitizeOutput(answer);
-            if (!fallback) {
-                aiAuditLogger.success(userId, actualConversationId, message, elapsedMs(startedAt));
-            }
             return new AiChatResponse(actualConversationId, answer);
         } finally {
-            AiRequestContext.clear();
+            AiRequestContext.clearAppointmentConfirmation();
         }
     }
 
@@ -98,7 +92,4 @@ public class AiChatApplicationService {
         return "????".equals(normalized) || "??".equals(normalized) || "????".equals(normalized);
     }
 
-    private long elapsedMs(long startedAt) {
-        return (System.nanoTime() - startedAt) / 1_000_000;
-    }
 }

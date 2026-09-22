@@ -84,6 +84,6 @@ class AiChatApplicationServiceTest {
         com.hmdp.ai.config.AiProperties properties = new com.hmdp.ai.config.AiProperties();
         return new AiChatApplicationService(customerService, store,
                 new AiRateLimiter(null, properties), new com.hmdp.ai.security.AiSafetyGuard(properties),
-                new AiFaqService(), new AiAuditLogger(), new AiMetrics((io.micrometer.core.instrument.MeterRegistry) null));
+                new AiFaqService(), new AiMetrics((io.micrometer.core.instrument.MeterRegistry) null));
     }
 }
