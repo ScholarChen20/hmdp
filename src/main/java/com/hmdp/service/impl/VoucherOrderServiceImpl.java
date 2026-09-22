@@ -2,11 +2,13 @@ package com.hmdp.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.config.RabbitMQConfig;
+import com.hmdp.ai.service.TraceContext;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
+import com.hmdp.service.BusinessMetrics;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
@@ -55,6 +57,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private RedissonClient redissonClient;
     @Resource
     private RabbitTemplate rabbitTemplate;
+    @Resource
+    private BusinessMetrics businessMetrics;
     @Value("${seckill.reservation.timeout-seconds:300}")
     private long reservationTimeoutSeconds;
 
@@ -100,11 +104,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Override
     public Result seckillVoucher(Long voucherId) {
+        businessMetrics.seckillRequest();
         Long userId = UserHolder.getUser().getId();
         Long orderId = redisIdWorker.nexId("order");
         Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(),
                 voucherId.toString(), userId.toString(), orderId.toString());
         if (result == null || result != 0L) {
+            businessMetrics.seckillRejected();
             return Result.fail(result != null && result == 1L ? "库存不足" : "不能重复下单");
         }
 
@@ -120,19 +126,24 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                                 org.springframework.amqp.core.MessageDeliveryMode.PERSISTENT);
                         message.getMessageProperties().setHeader("x-retry-count", 0);
                         message.getMessageProperties().setHeader("orderId", orderId.toString());
+                        message.getMessageProperties().setHeader(TraceContext.TRACE_ID_HEADER,
+                                TraceContext.currentTraceId());
                         return message;
                     }, correlationData);
             org.springframework.amqp.rabbit.connection.CorrelationData.Confirm confirm =
                     correlationData.getFuture().get(3, TimeUnit.SECONDS);
             if (!confirm.isAck()) {
+                businessMetrics.seckillFailure();
                 releaseReservation(orderId, userId, voucherId);
                 return Result.fail("订单消息发送失败，请稍后重试");
             }
+            businessMetrics.seckillPublished();
             return Result.ok(orderId);
         } catch (java.util.concurrent.TimeoutException e) {
             log.warn("秒杀订单 Publisher Confirm 超时，保留预扣记录等待补偿，orderId={}", orderId);
             return Result.fail("订单正在处理中，请稍后查询");
         } catch (Exception e) {
+            businessMetrics.seckillFailure();
             log.error("秒杀订单消息发送异常，orderId={}", orderId, e);
             return Result.fail("订单消息发送失败，请稍后重试");
         }

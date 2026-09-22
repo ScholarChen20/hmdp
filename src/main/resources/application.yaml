@@ -26,3 +26,10 @@ ai:
   appointment:
     confirmation-ttl-minutes: 15
     timeout-scan-delay-ms: ${APPOINTMENT_TIMEOUT_SCAN_DELAY_MS:60000}
+  rate-limit:
+    user-per-minute: ${AI_USER_RATE_LIMIT_PER_MINUTE:20}
+    ip-per-minute: ${AI_IP_RATE_LIMIT_PER_MINUTE:60}
+    global-per-minute: ${AI_GLOBAL_RATE_LIMIT_PER_MINUTE:600}
+  safety:
+    sensitive-words: ${AI_SENSITIVE_WORDS:密码,验证码,银行卡,身份证,token,secret}
+    injection-patterns: ${AI_INJECTION_PATTERNS:ignore previous instructions,system prompt,developer message,越过安全限制,忽略之前的指令}
