@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DEV_DB_URL:jdbc:mysql://localhost:3306/hmdp?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${DEV_DB_USERNAME:root}
+    password: ${DEV_DB_PASSWORD:123456}
+  redis:
+    host: ${DEV_REDIS_HOST:192.168.100.128}
+    port: ${DEV_REDIS_PORT:6379}
+    password: ${DEV_REDIS_PASSWORD:123321}
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
+  rabbitmq:
+    host: ${DEV_RABBITMQ_HOST:192.168.100.128}
+    port: ${DEV_RABBITMQ_PORT:5672}
+    virtual-host: ${DEV_RABBITMQ_VIRTUAL_HOST:/hmall}
+    username: ${DEV_RABBITMQ_USERNAME:hmall}
+    password: ${DEV_RABBITMQ_PASSWORD:123}
+
+logging:
+  level:
+    com.hmdp: ${LOG_LEVEL:debug}

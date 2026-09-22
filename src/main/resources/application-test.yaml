@@ -1,0 +1,33 @@
+server:
+  port: ${TEST_SERVER_PORT:8082}
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/hmdp_test?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${TEST_DB_USERNAME:root}
+    password: ${TEST_DB_PASSWORD:123456}
+  redis:
+    host: ${TEST_REDIS_HOST:localhost}
+    port: ${TEST_REDIS_PORT:6379}
+    password: ${TEST_REDIS_PASSWORD:}
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
+  rabbitmq:
+    host: ${TEST_RABBITMQ_HOST:localhost}
+    port: ${TEST_RABBITMQ_PORT:5672}
+    virtual-host: ${TEST_RABBITMQ_VIRTUAL_HOST:/}
+    username: ${TEST_RABBITMQ_USERNAME:guest}
+    password: ${TEST_RABBITMQ_PASSWORD:guest}
+
+logging:
+  level:
+    com.hmdp: ${LOG_LEVEL:info}
+
+ai:
+  qwen:
+    enabled: ${QWEN_ENABLED:false}
