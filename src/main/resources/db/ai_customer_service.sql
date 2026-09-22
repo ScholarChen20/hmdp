@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `tb_home_service_appointment` (
   `contact_phone` varchar(16) NOT NULL COMMENT '????',
   `service_address` varchar(255) NOT NULL COMMENT '????',
   `remark` varchar(255) DEFAULT NULL COMMENT '??',
-  `status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '0??? 1??? 2??? 3??? 4???',
+  `status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '0 pending, 1 confirmed, 2 user cancelled, 3 completed, 4 rejected, 5 timed out',
   `source` varchar(16) NOT NULL COMMENT 'AI_CHAT ? MANUAL',
   `idempotency_key` varchar(64) DEFAULT NULL COMMENT '???',
   `create_time` datetime NOT NULL COMMENT '????',

@@ -20,7 +20,7 @@ public class HomeServiceAppointment {
     private String contactPhone;
     private String serviceAddress;
     private String remark;
-    /** 0-??????1-????2-????3-????4-??? */
+    /** 0 pending, 1 confirmed, 2 user cancelled, 3 completed, 4 rejected, 5 timed out */
     private Integer status;
     private String source;
     private String idempotencyKey;

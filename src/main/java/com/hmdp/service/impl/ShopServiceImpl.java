@@ -7,6 +7,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
+import com.hmdp.cache.ShopLocalCache;
 import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
@@ -23,6 +24,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
@@ -50,6 +54,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private CacheClient cacheClient;
+    @Resource
+    private ShopLocalCache shopLocalCache;
+    @Resource
+    private org.springframework.data.redis.listener.ChannelTopic shopCacheInvalidationTopic;
+    @Value("${cache.shop.ttl-minutes:30}")
+    private long shopCacheTtlMinutes;
+    @Value("${cache.shop.ttl-jitter-minutes:5}")
+    private long shopCacheTtlJitterMinutes;
 
     /**
      * 根据id查询店铺信息
@@ -58,11 +70,12 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
      */
     @Override
     public Result queryById(Long id) {
-        //缓存穿透
-//        Shop shop = queryWithLogicalExpire(id);
-        Shop shop = cacheClient.queryWithPassThrough(RedisConstants.CACHE_SHOP_KEY, id, Shop.class, this::getById,
-                RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES); //  缓存穿透
-//        Shop shop2 = cacheClient.queryWithLogicalExpire(CACHE_SHOP_KEY, id, Shop.class, this::getById,CACHE_SHOP_TTL,TimeUnit.MINUTES); //缓存击穿
+        Shop shop = shopLocalCache.get(id);
+        if (shop == null) {
+            shop = cacheClient.queryWithPassThrough(RedisConstants.CACHE_SHOP_KEY, id, Shop.class,
+                    this::getById, shopCacheTtlMinutes, shopCacheTtlJitterMinutes, TimeUnit.MINUTES);
+            shopLocalCache.put(id, shop);
+        }
         if(shop == null){
             return Result.fail("店铺不存在！");
         }
@@ -237,9 +250,29 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (id == null) {
             return Result.fail("店铺id不能为空");
         }
-        updateById(shop);
-        //2. 删除redis缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + id);
+        if (!updateById(shop)) {
+            return Result.fail("店铺更新失败");
+        }
+        Runnable invalidate = () -> {
+            shopLocalCache.evict(id);
+            stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + id);
+            try {
+                stringRedisTemplate.convertAndSend(shopCacheInvalidationTopic.getTopic(), id.toString());
+            } catch (Exception e) {
+                // Redis Pub/Sub 丢失时由后续查询重新校正 Redis，本机缓存已先失效。
+                log.warn("商家缓存失效广播失败，shopId=" + id + ", error=" + e.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    invalidate.run();
+                }
+            });
+        } else {
+            invalidate.run();
+        }
         return Result.ok();
     }
 

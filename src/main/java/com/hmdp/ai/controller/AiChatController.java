@@ -6,6 +6,7 @@ import com.hmdp.dto.Result;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/ai/chat")
@@ -17,13 +18,21 @@ public class AiChatController {
     }
 
     @PostMapping
-    public Result chat(@Valid @RequestBody AiChatRequest request) {
-        return Result.ok(aiChatApplicationService.chat(request.getConversationId(), request.getMessage()));
+    public Result chat(@Valid @RequestBody AiChatRequest request, HttpServletRequest httpRequest) {
+        return Result.ok(aiChatApplicationService.chat(request.getConversationId(), request.getMessage(), clientIp(httpRequest)));
     }
 
     @DeleteMapping("/conversations/{conversationId}")
     public Result clearConversation(@PathVariable String conversationId) {
         aiChatApplicationService.clearConversation(conversationId);
         return Result.ok();
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.trim().isEmpty()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

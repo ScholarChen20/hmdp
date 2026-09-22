@@ -16,6 +16,8 @@ local orderId = ARGV[3]
 local stockKey = "seckill:stock:" .. voucherId
 --2.2 订单key
 local orderKey = "seckill:order:" .. voucherId
+local reservationKey = "seckill:reservation:" .. orderId
+local reservationIndexKey = "seckill:reservation:index"
 
 -- 3 脚本业务
 -- 3.1 判断库存是否充足 get stockKey
@@ -31,7 +33,15 @@ end
 redis.call("incrby", stockKey, -1)
 -- 3.4 记录订单 sadd orderKey userId
 redis.call("sadd", orderKey, userId)
--- 3.5 发送消息给mq XADD  stream.orders * userId orderId voucherId
-redis.call("xadd", "stream.orders", "*", "userId", userId, "voucherId", voucherId, "id", orderId)
+-- 3.5 记录预扣状态。订单消息只由 RabbitMQ 生产者投递，避免 Redis Stream 双通道重复消费。
+local reservedAt = redis.call("time")[1]
+redis.call("hset", reservationKey,
+    "orderId", orderId,
+    "userId", userId,
+    "voucherId", voucherId,
+    "reservedAt", reservedAt,
+    "status", "PENDING")
+redis.call("expire", reservationKey, 86400)
+redis.call("zadd", reservationIndexKey, reservedAt, orderId)
 -- 4 返回结果
 return 0 --下单成功
