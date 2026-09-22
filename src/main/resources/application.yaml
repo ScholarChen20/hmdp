@@ -10,6 +10,10 @@ mybatis-plus:
 logging:
   level:
     com.hmdp: ${LOG_LEVEL:info}
+cache:
+  shop:
+    ttl-minutes: ${CACHE_SHOP_TTL_MINUTES:30}
+    ttl-jitter-minutes: ${CACHE_SHOP_TTL_JITTER_MINUTES:5}
 ai:
   qwen:
     enabled: ${QWEN_ENABLED:false}
@@ -21,3 +25,4 @@ ai:
     memory-ttl-hours: 24
   appointment:
     confirmation-ttl-minutes: 15
+    timeout-scan-delay-ms: ${APPOINTMENT_TIMEOUT_SCAN_DELAY_MS:60000}

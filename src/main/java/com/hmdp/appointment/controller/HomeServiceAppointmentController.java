@@ -32,4 +32,5 @@ public class HomeServiceAppointmentController {
         return appointmentService.cancelByUserId(UserHolder.getUser().getId(), id)
                 ? Result.ok() : Result.fail("????????????????????");
     }
+
 }

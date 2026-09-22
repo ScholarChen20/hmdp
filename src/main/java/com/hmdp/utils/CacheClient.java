@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 import static com.hmdp.utils.RedisConstants.CACHE_NULL_TTL;
@@ -37,6 +38,13 @@ public class CacheClient {
      */
     public void set(String key, Object value, Long time, TimeUnit unit) {
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), time, unit);
+    }
+
+    public void setWithRandomTtl(String key, Object value, Long time, Long jitter, TimeUnit unit) {
+        long randomJitter = jitter == null || jitter <= 0 ? 0
+                : ThreadLocalRandom.current().nextLong(jitter + 1);
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value),
+                time + randomJitter, unit);
     }
 
     /**
@@ -70,6 +78,12 @@ public class CacheClient {
      * @return
      */
     public <R, ID> R queryWithPassThrough(String keyPrefix, ID id, Class<R> type, Function<ID, R> dbFallback, Long time, TimeUnit unit) {
+        return queryWithPassThrough(keyPrefix, id, type, dbFallback, time, 0L, unit);
+    }
+
+    public <R, ID> R queryWithPassThrough(String keyPrefix, ID id, Class<R> type,
+                                          Function<ID, R> dbFallback, Long time,
+                                          Long jitter, TimeUnit unit) {
         String key = keyPrefix + id;
         // 1. 从redis中查询店铺缓存
         String json = stringRedisTemplate.opsForValue().get(key);
@@ -88,7 +102,7 @@ public class CacheClient {
             return null;
         }
         // 将数据写入redis中
-        this.set(key, r, time, unit);
+        this.setWithRandomTtl(key, r, time, jitter, unit);
         return r;
     }
 

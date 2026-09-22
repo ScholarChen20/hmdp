@@ -10,4 +10,8 @@ public interface IHomeServiceAppointmentService extends IService<HomeServiceAppo
     HomeServiceAppointment create(Long userId, CreateHomeServiceAppointmentRequest request, String source);
     List<HomeServiceAppointment> listByUserId(Long userId);
     boolean cancelByUserId(Long userId, Long appointmentId);
+    boolean confirmByShop(Long shopId, Long appointmentId);
+    boolean rejectByShop(Long shopId, Long appointmentId);
+    boolean completeByShop(Long shopId, Long appointmentId);
+    int timeoutPendingAppointments();
 }

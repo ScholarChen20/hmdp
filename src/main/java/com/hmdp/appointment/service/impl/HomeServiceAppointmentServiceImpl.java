@@ -12,6 +12,8 @@ import com.hmdp.service.IShopService;
 import com.hmdp.utils.RedisIdWorker;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,7 +52,13 @@ public class HomeServiceAppointmentServiceImpl extends ServiceImpl<HomeServiceAp
         appointment.setSource(source);
         appointment.setCreateTime(LocalDateTime.now());
         appointment.setUpdateTime(LocalDateTime.now());
-        save(appointment);
+        if (baseMapper.insertIgnore(appointment) == 0) {
+            if (StrUtil.isBlank(request.getIdempotencyKey())) {
+                throw new IllegalStateException("预约创建失败");
+            }
+            return lambdaQuery().eq(HomeServiceAppointment::getUserId, userId)
+                    .eq(HomeServiceAppointment::getIdempotencyKey, request.getIdempotencyKey()).one();
+        }
         return appointment;
     }
 
@@ -64,7 +72,44 @@ public class HomeServiceAppointmentServiceImpl extends ServiceImpl<HomeServiceAp
     @Transactional
     public boolean cancelByUserId(Long userId, Long appointmentId) {
         return lambdaUpdate().eq(HomeServiceAppointment::getId, appointmentId)
-                .eq(HomeServiceAppointment::getUserId, userId).eq(HomeServiceAppointment::getStatus, 0)
+                .eq(HomeServiceAppointment::getUserId, userId)
+                .in(HomeServiceAppointment::getStatus, 0, 1)
                 .set(HomeServiceAppointment::getStatus, 2).update();
+    }
+
+    @Override
+    @Transactional
+    public boolean confirmByShop(Long shopId, Long appointmentId) {
+        return transition(appointmentId, shopId, 0, 1);
+    }
+
+    @Override
+    @Transactional
+    public boolean rejectByShop(Long shopId, Long appointmentId) {
+        return transition(appointmentId, shopId, 0, 4);
+    }
+
+    @Override
+    @Transactional
+    public boolean completeByShop(Long shopId, Long appointmentId) {
+        return transition(appointmentId, shopId, 1, 3);
+    }
+
+    private boolean transition(Long appointmentId, Long shopId, int from, int to) {
+        return lambdaUpdate().eq(HomeServiceAppointment::getId, appointmentId)
+                .eq(HomeServiceAppointment::getShopId, shopId)
+                .eq(HomeServiceAppointment::getStatus, from)
+                .set(HomeServiceAppointment::getStatus, to).update();
+    }
+
+    @Override
+    @Scheduled(fixedDelayString = "${ai.appointment.timeout-scan-delay-ms:60000}")
+    @Transactional
+    public int timeoutPendingAppointments() {
+        LambdaUpdateWrapper<HomeServiceAppointment> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(HomeServiceAppointment::getStatus, 0)
+                .lt(HomeServiceAppointment::getAppointmentTime, LocalDateTime.now())
+                .set(HomeServiceAppointment::getStatus, 5);
+        return baseMapper.update(null, wrapper);
     }
 }
